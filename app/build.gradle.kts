@@ -42,6 +42,7 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.kotlinx.coroutines.android)
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation(libs.osmdroid.android)
     implementation(libs.androidx.exifinterface)
 

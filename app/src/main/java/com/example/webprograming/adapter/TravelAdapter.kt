@@ -5,10 +5,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.webprograming.R
 import com.example.webprograming.model.TravelRecord
+import kotlinx.coroutines.*
 import java.io.File
 
 class TravelAdapter(
@@ -21,6 +23,8 @@ class TravelAdapter(
         val ivThumbnail: ImageView = itemView.findViewById(R.id.ivThumbnail)
         val tvTitle: TextView = itemView.findViewById(R.id.tvTitle)
         val tvDate: TextView = itemView.findViewById(R.id.tvDate)
+        val progressThumbnail: ProgressBar = itemView.findViewById(R.id.progressThumbnail)
+        var loadJob: Job? = null
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TravelViewHolder {
@@ -35,11 +39,28 @@ class TravelAdapter(
         holder.tvTitle.text = record.title
         holder.tvDate.text = record.visitDate
 
+        holder.loadJob?.cancel()
+        holder.ivThumbnail.setImageResource(R.drawable.ic_placeholder)
+
         if (record.photoPath.isNotEmpty() && File(record.photoPath).exists()) {
-            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
-            val bitmap = BitmapFactory.decodeFile(record.photoPath, options)
-            holder.ivThumbnail.setImageBitmap(bitmap)
+            holder.progressThumbnail.visibility = View.VISIBLE
+
+            holder.loadJob = CoroutineScope(Dispatchers.Main).launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    try {
+                        val options = BitmapFactory.Options().apply { inSampleSize = 8 }
+                        BitmapFactory.decodeFile(record.photoPath, options)
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                holder.progressThumbnail.visibility = View.GONE
+                if (bitmap != null) {
+                    holder.ivThumbnail.setImageBitmap(bitmap)
+                }
+            }
         } else {
+            holder.progressThumbnail.visibility = View.GONE
             holder.ivThumbnail.setImageResource(R.drawable.ic_placeholder)
         }
 
@@ -48,6 +69,11 @@ class TravelAdapter(
             onItemLongClick(record, it)
             true
         }
+    }
+
+    override fun onViewRecycled(holder: TravelViewHolder) {
+        super.onViewRecycled(holder)
+        holder.loadJob?.cancel()
     }
 
     override fun getItemCount(): Int = records.size

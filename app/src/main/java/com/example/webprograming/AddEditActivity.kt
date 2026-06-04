@@ -4,20 +4,26 @@ import android.Manifest
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.lifecycle.lifecycleScope
 import com.example.webprograming.db.TravelDBHelper
 import com.example.webprograming.model.TravelRecord
 import com.example.webprograming.util.GpsUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.text.SimpleDateFormat
@@ -32,6 +38,7 @@ class AddEditActivity : AppCompatActivity() {
     private lateinit var ivPhoto: ImageView
     private lateinit var btnSelectPhoto: Button
     private lateinit var btnSave: Button
+    private lateinit var progressBar: ProgressBar
 
     private var recordId: Long = -1
     private var currentPhotoPath: String = ""
@@ -56,7 +63,7 @@ class AddEditActivity : AppCompatActivity() {
         recordId = intent.getLongExtra("record_id", -1)
         if (recordId != -1L) {
             supportActionBar?.title = "기록 수정"
-            loadRecord()
+            loadRecordAsync()
         } else {
             supportActionBar?.title = "새 기록"
         }
@@ -71,28 +78,81 @@ class AddEditActivity : AppCompatActivity() {
         ivPhoto = findViewById(R.id.ivPhoto)
         btnSelectPhoto = findViewById(R.id.btnSelectPhoto)
         btnSave = findViewById(R.id.btnSave)
+        progressBar = findViewById(R.id.progressBarAddEdit)
     }
 
     private fun setupListeners() {
         etDate.setOnClickListener { showDatePicker() }
         btnSelectPhoto.setOnClickListener { showPhotoDialog() }
-        btnSave.setOnClickListener { saveRecord() }
+        btnSave.setOnClickListener { saveRecordAsync() }
     }
 
-    private fun loadRecord() {
-        val record = dbHelper.getRecordById(recordId) ?: return
-        etTitle.setText(record.title)
-        etDate.setText(record.visitDate)
-        etMemo.setText(record.memo)
-        currentPhotoPath = record.photoPath
-        latitude = record.latitude
-        longitude = record.longitude
+    private fun loadRecordAsync() {
+        lifecycleScope.launch {
+            progressBar.visibility = View.VISIBLE
 
-        if (currentPhotoPath.isNotEmpty() && File(currentPhotoPath).exists()) {
-            val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-            val bitmap = BitmapFactory.decodeFile(currentPhotoPath, options)
-            ivPhoto.setImageBitmap(bitmap)
+            val record = withContext(Dispatchers.IO) {
+                dbHelper.getRecordById(recordId)
+            }
+
+            progressBar.visibility = View.GONE
+
+            if (record == null) return@launch
+            etTitle.setText(record.title)
+            etDate.setText(record.visitDate)
+            etMemo.setText(record.memo)
+            currentPhotoPath = record.photoPath
+            latitude = record.latitude
+            longitude = record.longitude
+
+            if (currentPhotoPath.isNotEmpty() && File(currentPhotoPath).exists()) {
+                loadImageAsync(currentPhotoPath)
+            }
         }
+    }
+
+    private fun loadImageAsync(path: String) {
+        lifecycleScope.launch {
+            progressBar.visibility = View.VISIBLE
+
+            val bitmap = withContext(Dispatchers.IO) {
+                decodeSampledBitmap(path, 800, 600)
+            }
+
+            progressBar.visibility = View.GONE
+            if (bitmap != null) {
+                ivPhoto.setImageBitmap(bitmap)
+            }
+        }
+    }
+
+    private fun decodeSampledBitmap(path: String, reqWidth: Int, reqHeight: Int): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, options)
+
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+            options.inJustDecodeBounds = false
+            BitmapFactory.decodeFile(path, options)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int
+    ): Int {
+        val (height, width) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 
     private fun showDatePicker() {
@@ -141,11 +201,13 @@ class AddEditActivity : AppCompatActivity() {
             this, "${packageName}.fileprovider", photoFile
         )
         intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+        @Suppress("DEPRECATION")
         startActivityForResult(intent, REQUEST_CAMERA)
     }
 
     private fun openGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        @Suppress("DEPRECATION")
         startActivityForResult(intent, REQUEST_GALLERY)
     }
 
@@ -162,56 +224,65 @@ class AddEditActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
 
         when (requestCode) {
             REQUEST_CAMERA -> {
-                loadPhotoIntoView()
-                extractGps()
+                loadImageAsync(currentPhotoPath)
+                extractGpsAsync()
             }
             REQUEST_GALLERY -> {
                 data?.data?.let { uri ->
-                    copyUriToFile(uri)
-                    loadPhotoIntoView()
-                    extractGps()
+                    copyUriToFileAsync(uri)
                 }
             }
         }
     }
 
-    private fun copyUriToFile(uri: Uri) {
-        try {
-            val inputStream = contentResolver.openInputStream(uri) ?: return
-            val file = createImageFile() ?: return
-            file.outputStream().use { output ->
-                inputStream.copyTo(output)
+    private fun copyUriToFileAsync(uri: Uri) {
+        lifecycleScope.launch {
+            progressBar.visibility = View.VISIBLE
+
+            withContext(Dispatchers.IO) {
+                try {
+                    val inputStream = contentResolver.openInputStream(uri) ?: return@withContext
+                    val file = createImageFile() ?: return@withContext
+                    file.outputStream().use { output ->
+                        inputStream.copyTo(output)
+                    }
+                    inputStream.close()
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
             }
-            inputStream.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
+
+            progressBar.visibility = View.GONE
+            loadImageAsync(currentPhotoPath)
+            extractGpsAsync()
         }
     }
 
-    private fun loadPhotoIntoView() {
-        if (currentPhotoPath.isNotEmpty() && File(currentPhotoPath).exists()) {
-            val options = BitmapFactory.Options().apply { inSampleSize = 2 }
-            val bitmap = BitmapFactory.decodeFile(currentPhotoPath, options)
-            ivPhoto.setImageBitmap(bitmap)
+    private fun extractGpsAsync() {
+        lifecycleScope.launch {
+            val gps = withContext(Dispatchers.IO) {
+                GpsUtil.extractGpsFromPhoto(currentPhotoPath)
+            }
+            if (gps != null) {
+                latitude = gps.latitude
+                longitude = gps.longitude
+                Toast.makeText(
+                    this@AddEditActivity,
+                    "GPS 위치 추출: ${String.format("%.4f", gps.latitude)}, ${String.format("%.4f", gps.longitude)}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
-    private fun extractGps() {
-        val gps = GpsUtil.extractGpsFromPhoto(currentPhotoPath)
-        if (gps != null) {
-            latitude = gps.latitude
-            longitude = gps.longitude
-            Toast.makeText(this, "GPS 위치 추출 완료", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    private fun saveRecord() {
+    private fun saveRecordAsync() {
         val title = etTitle.text.toString().trim()
         val date = etDate.text.toString().trim()
         val memo = etMemo.text.toString().trim()
@@ -235,15 +306,23 @@ class AddEditActivity : AppCompatActivity() {
             longitude = longitude
         )
 
-        if (recordId != -1L) {
-            dbHelper.updateRecord(record)
-            Toast.makeText(this, "수정되었습니다", Toast.LENGTH_SHORT).show()
-        } else {
-            dbHelper.insertRecord(record)
-            Toast.makeText(this, "저장되었습니다", Toast.LENGTH_SHORT).show()
-        }
+        lifecycleScope.launch {
+            progressBar.visibility = View.VISIBLE
+            btnSave.isEnabled = false
 
-        finish()
+            withContext(Dispatchers.IO) {
+                if (recordId != -1L) {
+                    dbHelper.updateRecord(record)
+                } else {
+                    dbHelper.insertRecord(record)
+                }
+            }
+
+            progressBar.visibility = View.GONE
+            val msg = if (recordId != -1L) "수정되었습니다" else "저장되었습니다"
+            Toast.makeText(this@AddEditActivity, msg, Toast.LENGTH_SHORT).show()
+            finish()
+        }
     }
 
     override fun onRequestPermissionsResult(

@@ -4,8 +4,11 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.*
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.webprograming.AddEditActivity
@@ -13,13 +16,16 @@ import com.example.webprograming.R
 import com.example.webprograming.adapter.TravelAdapter
 import com.example.webprograming.db.TravelDBHelper
 import com.example.webprograming.model.TravelRecord
-import android.widget.TextView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class HomeFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
     private lateinit var tvEmpty: TextView
+    private lateinit var progressBar: ProgressBar
     private lateinit var adapter: TravelAdapter
     private lateinit var dbHelper: TravelDBHelper
     private var selectedRecord: TravelRecord? = null
@@ -43,6 +49,7 @@ class HomeFragment : Fragment() {
         dbHelper = TravelDBHelper(requireContext())
         recyclerView = view.findViewById(R.id.recyclerView)
         tvEmpty = view.findViewById(R.id.tvEmpty)
+        progressBar = view.findViewById(R.id.progressBar)
         val fabAdd: FloatingActionButton = view.findViewById(R.id.fabAdd)
 
         setupRecyclerView()
@@ -56,7 +63,7 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        loadRecords()
+        loadRecordsAsync()
     }
 
     private fun setupRecyclerView() {
@@ -72,10 +79,27 @@ class HomeFragment : Fragment() {
         recyclerView.adapter = adapter
     }
 
-    private fun loadRecords() {
-        val records = dbHelper.getAllRecords(currentSortOrder)
-        adapter.updateRecords(records)
-        tvEmpty.visibility = if (records.isEmpty()) View.VISIBLE else View.GONE
+    private fun loadRecordsAsync() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            progressBar.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+            tvEmpty.visibility = View.GONE
+
+            val records = withContext(Dispatchers.IO) {
+                dbHelper.getAllRecords(currentSortOrder)
+            }
+
+            progressBar.visibility = View.GONE
+            adapter.updateRecords(records)
+
+            if (records.isEmpty()) {
+                tvEmpty.visibility = View.VISIBLE
+                recyclerView.visibility = View.GONE
+            } else {
+                tvEmpty.visibility = View.GONE
+                recyclerView.visibility = View.VISIBLE
+            }
+        }
     }
 
     private fun showDetail(record: TravelRecord) {
@@ -96,13 +120,13 @@ class HomeFragment : Fragment() {
         return when (item.itemId) {
             R.id.menu_sort_date -> {
                 currentSortOrder = "visit_date DESC"
-                loadRecords()
+                loadRecordsAsync()
                 Toast.makeText(requireContext(), "날짜순 정렬", Toast.LENGTH_SHORT).show()
                 true
             }
             R.id.menu_sort_name -> {
                 currentSortOrder = "title ASC"
-                loadRecords()
+                loadRecordsAsync()
                 Toast.makeText(requireContext(), "이름순 정렬", Toast.LENGTH_SHORT).show()
                 true
             }
@@ -144,9 +168,7 @@ class HomeFragment : Fragment() {
             .setTitle("삭제 확인")
             .setMessage("'${record.title}' 기록을 삭제하시겠습니까?")
             .setPositiveButton("삭제") { _, _ ->
-                dbHelper.deleteRecord(record.id)
-                loadRecords()
-                Toast.makeText(requireContext(), "삭제되었습니다", Toast.LENGTH_SHORT).show()
+                deleteRecordAsync(record.id)
             }
             .setNegativeButton("취소", null)
             .show()
@@ -157,11 +179,29 @@ class HomeFragment : Fragment() {
             .setTitle("전체 삭제")
             .setMessage("모든 여행 기록을 삭제하시겠습니까?")
             .setPositiveButton("삭제") { _, _ ->
-                dbHelper.deleteAllRecords()
-                loadRecords()
-                Toast.makeText(requireContext(), "모두 삭제되었습니다", Toast.LENGTH_SHORT).show()
+                deleteAllRecordsAsync()
             }
             .setNegativeButton("취소", null)
             .show()
+    }
+
+    private fun deleteRecordAsync(id: Long) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                dbHelper.deleteRecord(id)
+            }
+            loadRecordsAsync()
+            Toast.makeText(requireContext(), "삭제되었습니다", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun deleteAllRecordsAsync() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                dbHelper.deleteAllRecords()
+            }
+            loadRecordsAsync()
+            Toast.makeText(requireContext(), "모두 삭제되었습니다", Toast.LENGTH_SHORT).show()
+        }
     }
 }
