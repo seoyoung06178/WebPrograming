@@ -3,12 +3,12 @@
 
     <item
         android:id="@+id/nav_home"
-        android:icon="@android:drawable/ic_menu_recent_history"
+        android:icon="@drawable/ic_list"
         android:title="여행 목록" />
 
     <item
         android:id="@+id/nav_map"
-        android:icon="@android:drawable/ic_dialog_map"
+        android:icon="@drawable/ic_map"
         android:title="지도" />
 
 </menu>

@@ -2,6 +2,7 @@ package com.example.webprograming.db
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import com.example.webprograming.model.TravelRecord
@@ -45,77 +46,111 @@ class TravelDBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     }
 
     fun insertRecord(record: TravelRecord): Long {
-        val db = writableDatabase
-        val values = ContentValues().apply {
-            put(COL_TITLE, record.title)
-            put(COL_VISIT_DATE, record.visitDate)
-            put(COL_MEMO, record.memo)
-            put(COL_PHOTO_PATH, record.photoPath)
-            put(COL_LATITUDE, record.latitude)
-            put(COL_LONGITUDE, record.longitude)
-            put(COL_CREATED_AT, System.currentTimeMillis().toString())
+        return try {
+            val db = writableDatabase
+            val values = ContentValues().apply {
+                put(COL_TITLE, record.title)
+                put(COL_VISIT_DATE, record.visitDate)
+                put(COL_MEMO, record.memo)
+                put(COL_PHOTO_PATH, record.photoPath)
+                put(COL_LATITUDE, record.latitude)
+                put(COL_LONGITUDE, record.longitude)
+                put(COL_CREATED_AT, System.currentTimeMillis().toString())
+            }
+            db.insert(TABLE_NAME, null, values)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            -1L
         }
-        return db.insert(TABLE_NAME, null, values)
     }
 
     fun getAllRecords(orderBy: String = "$COL_VISIT_DATE DESC"): List<TravelRecord> {
         val records = mutableListOf<TravelRecord>()
-        val db = readableDatabase
-        val cursor = db.query(TABLE_NAME, null, null, null, null, null, orderBy)
-
-        cursor.use {
-            while (it.moveToNext()) {
-                records.add(cursorToRecord(it))
+        return try {
+            val db = readableDatabase
+            val cursor = db.query(TABLE_NAME, null, null, null, null, null, orderBy)
+            cursor.use {
+                while (it.moveToNext()) {
+                    cursorToRecord(it)?.let { record -> records.add(record) }
+                }
             }
+            records
+        } catch (e: Exception) {
+            e.printStackTrace()
+            records
         }
-        return records
     }
 
     fun getRecordById(id: Long): TravelRecord? {
-        val db = readableDatabase
-        val cursor = db.query(
-            TABLE_NAME, null,
-            "$COL_ID = ?", arrayOf(id.toString()),
-            null, null, null
-        )
-        cursor.use {
-            return if (it.moveToFirst()) cursorToRecord(it) else null
+        return try {
+            val db = readableDatabase
+            val cursor = db.query(
+                TABLE_NAME, null,
+                "$COL_ID = ?", arrayOf(id.toString()),
+                null, null, null
+            )
+            cursor.use {
+                if (it.moveToFirst()) cursorToRecord(it) else null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
 
     fun updateRecord(record: TravelRecord): Int {
-        val db = writableDatabase
-        val values = ContentValues().apply {
-            put(COL_TITLE, record.title)
-            put(COL_VISIT_DATE, record.visitDate)
-            put(COL_MEMO, record.memo)
-            put(COL_PHOTO_PATH, record.photoPath)
-            put(COL_LATITUDE, record.latitude)
-            put(COL_LONGITUDE, record.longitude)
+        return try {
+            val db = writableDatabase
+            val values = ContentValues().apply {
+                put(COL_TITLE, record.title)
+                put(COL_VISIT_DATE, record.visitDate)
+                put(COL_MEMO, record.memo)
+                put(COL_PHOTO_PATH, record.photoPath)
+                put(COL_LATITUDE, record.latitude)
+                put(COL_LONGITUDE, record.longitude)
+            }
+            db.update(TABLE_NAME, values, "$COL_ID = ?", arrayOf(record.id.toString()))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
         }
-        return db.update(TABLE_NAME, values, "$COL_ID = ?", arrayOf(record.id.toString()))
     }
 
     fun deleteRecord(id: Long): Int {
-        val db = writableDatabase
-        return db.delete(TABLE_NAME, "$COL_ID = ?", arrayOf(id.toString()))
+        return try {
+            val db = writableDatabase
+            db.delete(TABLE_NAME, "$COL_ID = ?", arrayOf(id.toString()))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
+        }
     }
 
     fun deleteAllRecords(): Int {
-        val db = writableDatabase
-        return db.delete(TABLE_NAME, null, null)
+        return try {
+            val db = writableDatabase
+            db.delete(TABLE_NAME, null, null)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0
+        }
     }
 
-    private fun cursorToRecord(cursor: android.database.Cursor): TravelRecord {
-        return TravelRecord(
-            id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
-            title = cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
-            visitDate = cursor.getString(cursor.getColumnIndexOrThrow(COL_VISIT_DATE)),
-            memo = cursor.getString(cursor.getColumnIndexOrThrow(COL_MEMO)) ?: "",
-            photoPath = cursor.getString(cursor.getColumnIndexOrThrow(COL_PHOTO_PATH)) ?: "",
-            latitude = cursor.getDouble(cursor.getColumnIndexOrThrow(COL_LATITUDE)),
-            longitude = cursor.getDouble(cursor.getColumnIndexOrThrow(COL_LONGITUDE)),
-            createdAt = cursor.getString(cursor.getColumnIndexOrThrow(COL_CREATED_AT)) ?: ""
-        )
+    private fun cursorToRecord(cursor: Cursor): TravelRecord? {
+        return try {
+            TravelRecord(
+                id = cursor.getLong(cursor.getColumnIndexOrThrow(COL_ID)),
+                title = cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)) ?: "",
+                visitDate = cursor.getString(cursor.getColumnIndexOrThrow(COL_VISIT_DATE)) ?: "",
+                memo = cursor.getString(cursor.getColumnIndexOrThrow(COL_MEMO)) ?: "",
+                photoPath = cursor.getString(cursor.getColumnIndexOrThrow(COL_PHOTO_PATH)) ?: "",
+                latitude = cursor.getDouble(cursor.getColumnIndexOrThrow(COL_LATITUDE)),
+                longitude = cursor.getDouble(cursor.getColumnIndexOrThrow(COL_LONGITUDE)),
+                createdAt = cursor.getString(cursor.getColumnIndexOrThrow(COL_CREATED_AT)) ?: ""
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }

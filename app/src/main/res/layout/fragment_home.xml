@@ -17,17 +17,42 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:clipToPadding="false"
-        android:padding="8dp" />
+        android:paddingTop="8dp"
+        android:paddingBottom="80dp" />
 
-    <TextView
+    <LinearLayout
         android:id="@+id/tvEmpty"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:text="여행 기록이 없습니다\n+ 버튼을 눌러 추가하세요"
-        android:textSize="16sp"
-        android:gravity="center"
-        android:textColor="?android:attr/textColorSecondary" />
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_placeholder"
+            android:alpha="0.4"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="빈 목록" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="여행 기록이 없습니다"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+ 버튼을 눌러 첫 여행을 기록하세요"
+            android:textSize="14sp"
+            android:textColor="@color/text_secondary" />
+
+    </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAdd"
@@ -37,6 +62,7 @@
         android:layout_margin="16dp"
         android:contentDescription="여행 기록 추가"
         android:src="@android:drawable/ic_input_add"
-        app:tint="@android:color/white" />
+        app:tint="@android:color/white"
+        app:backgroundTint="?attr/colorSecondary" />
 
 </FrameLayout>

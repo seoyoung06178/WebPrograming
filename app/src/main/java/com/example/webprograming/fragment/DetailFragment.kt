@@ -65,6 +65,7 @@ class DetailFragment : Fragment() {
         val tvDate: TextView = view.findViewById(R.id.tvDetailDate)
         val tvMemo: TextView = view.findViewById(R.id.tvDetailMemo)
         val tvLocation: TextView = view.findViewById(R.id.tvDetailLocation)
+        val layoutLocation: LinearLayout = view.findViewById(R.id.layoutLocation)
         val btnEdit: Button = view.findViewById(R.id.btnEdit)
         val btnDelete: Button = view.findViewById(R.id.btnDelete)
         val progressBar: ProgressBar = view.findViewById(R.id.progressBarDetail)
@@ -86,13 +87,13 @@ class DetailFragment : Fragment() {
 
             tvTitle.text = record.title
             tvDate.text = record.visitDate
-            tvMemo.text = if (record.memo.isNotEmpty()) record.memo else "메모 없음"
+            tvMemo.text = if (record.memo.isNotEmpty()) record.memo else "메모가 없습니다."
 
             if (record.latitude != 0.0 && record.longitude != 0.0) {
-                tvLocation.text = "위치: ${String.format("%.4f", record.latitude)}, ${String.format("%.4f", record.longitude)}"
-                tvLocation.visibility = View.VISIBLE
+                tvLocation.text = "${String.format("%.4f", record.latitude)}, ${String.format("%.4f", record.longitude)}"
+                layoutLocation.visibility = View.VISIBLE
             } else {
-                tvLocation.visibility = View.GONE
+                layoutLocation.visibility = View.GONE
             }
 
             if (record.photoPath.isNotEmpty() && File(record.photoPath).exists()) {
