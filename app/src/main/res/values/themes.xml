@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.WebPrograming" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <style name="Theme.WebPrograming" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryDark">@color/primary_dark</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>
@@ -13,6 +13,7 @@
         <item name="colorSurface">@color/surface</item>
         <item name="colorOnSurface">@color/on_surface</item>
         <item name="colorError">@color/error</item>
+        <item name="android:statusBarColor">@color/primary</item>
     </style>
 
 </resources>

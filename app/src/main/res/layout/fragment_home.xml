@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground">
+    android:background="@color/background">
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -26,14 +26,15 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:orientation="vertical"
-        android:gravity="center">
+        android:gravity="center"
+        android:padding="32dp">
 
         <ImageView
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
             android:src="@drawable/ic_placeholder"
-            android:alpha="0.4"
-            android:layout_marginBottom="16dp"
+            android:alpha="0.3"
+            android:layout_marginBottom="20dp"
             android:contentDescription="빈 목록" />
 
         <TextView
@@ -42,14 +43,15 @@
             android:text="여행 기록이 없습니다"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="?attr/colorOnSurface"
+            android:textColor="@color/on_surface"
             android:layout_marginBottom="8dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="+ 버튼을 눌러 첫 여행을 기록하세요"
+            android:text="아래 + 버튼을 눌러\n첫 여행을 기록해보세요!"
             android:textSize="14sp"
+            android:gravity="center"
             android:textColor="@color/text_secondary" />
 
     </LinearLayout>
@@ -59,10 +61,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
+        android:layout_margin="20dp"
         android:contentDescription="여행 기록 추가"
         android:src="@android:drawable/ic_input_add"
-        app:tint="@android:color/white"
-        app:backgroundTint="?attr/colorSecondary" />
+        app:tint="@color/white"
+        app:backgroundTint="@color/primary"
+        app:fabSize="normal"
+        app:elevation="6dp" />
 
 </FrameLayout>

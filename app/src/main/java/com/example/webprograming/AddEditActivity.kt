@@ -55,6 +55,8 @@ class AddEditActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_add_edit)
 
+        val toolbar = findViewById<com.google.android.material.appbar.MaterialToolbar>(R.id.toolbarAddEdit)
+        setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         dbHelper = TravelDBHelper(this)
@@ -62,10 +64,10 @@ class AddEditActivity : AppCompatActivity() {
 
         recordId = intent.getLongExtra("record_id", -1)
         if (recordId != -1L) {
-            supportActionBar?.title = "기록 수정"
+            toolbar.title = "기록 수정"
             loadRecordAsync()
         } else {
-            supportActionBar?.title = "새 기록"
+            toolbar.title = "새 기록"
         }
 
         setupListeners()
