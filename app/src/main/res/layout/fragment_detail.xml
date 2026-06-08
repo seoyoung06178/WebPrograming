@@ -128,7 +128,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:paddingHorizontal="16dp"
-                android:paddingBottom="24dp">
+                android:paddingBottom="12dp">
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnEdit"
@@ -153,6 +153,20 @@
                     app:cornerRadius="24dp" />
 
             </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBack"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="24dp"
+                android:text="목록으로 돌아가기"
+                android:textColor="@color/text_secondary"
+                app:icon="@android:drawable/ic_menu_revert"
+                app:iconTint="@color/text_secondary"
+                app:strokeColor="@color/divider"
+                app:cornerRadius="24dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
         </LinearLayout>
     </ScrollView>

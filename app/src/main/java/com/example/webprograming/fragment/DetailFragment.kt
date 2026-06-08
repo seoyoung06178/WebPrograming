@@ -119,6 +119,11 @@ class DetailFragment : Fragment() {
             btnDelete.setOnClickListener {
                 showDeleteDialog(record)
             }
+
+            val btnBack: Button = view.findViewById(R.id.btnBack)
+            btnBack.setOnClickListener {
+                parentFragmentManager.popBackStack()
+            }
         }
     }
 
