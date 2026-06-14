@@ -52,10 +52,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun clearBackStack() {
-        val fm = supportFragmentManager
-        for (i in 0 until fm.backStackEntryCount) {
-            fm.popBackStack()
-        }
+        supportFragmentManager.popBackStack(null, androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE)
     }
 
     @Suppress("DEPRECATION")

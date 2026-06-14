@@ -9,6 +9,11 @@ import com.example.webprograming.model.TravelRecord
 
 class TravelDBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
+    enum class SortOrder(val sql: String) {
+        DATE_DESC("visit_date DESC, _id DESC"),
+        TITLE_ASC("title COLLATE NOCASE ASC, _id DESC")
+    }
+
     companion object {
         private const val DATABASE_NAME = "travel.db"
         private const val DATABASE_VERSION = 1
@@ -64,11 +69,11 @@ class TravelDBHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
     }
 
-    fun getAllRecords(orderBy: String = "$COL_VISIT_DATE DESC"): List<TravelRecord> {
+    fun getAllRecords(sortOrder: SortOrder = SortOrder.DATE_DESC): List<TravelRecord> {
         val records = mutableListOf<TravelRecord>()
         return try {
             val db = readableDatabase
-            val cursor = db.query(TABLE_NAME, null, null, null, null, null, orderBy)
+            val cursor = db.query(TABLE_NAME, null, null, null, null, null, sortOrder.sql)
             cursor.use {
                 while (it.moveToNext()) {
                     cursorToRecord(it)?.let { record -> records.add(record) }

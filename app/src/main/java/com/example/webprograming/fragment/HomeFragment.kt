@@ -1,6 +1,7 @@
 package com.example.webprograming.fragment
 
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.*
@@ -18,8 +19,11 @@ import com.example.webprograming.db.TravelDBHelper
 import com.example.webprograming.model.TravelRecord
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class HomeFragment : Fragment() {
 
@@ -29,11 +33,13 @@ class HomeFragment : Fragment() {
     private lateinit var adapter: TravelAdapter
     private lateinit var dbHelper: TravelDBHelper
     private var selectedRecord: TravelRecord? = null
-    private var currentSortOrder = "visit_date DESC"
+    private var currentSortOrder = TravelDBHelper.SortOrder.DATE_DESC
+    private var loadJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setHasOptionsMenu(true)
+        currentSortOrder = loadSortOrder(requireContext())
     }
 
     override fun onCreateView(
@@ -80,14 +86,22 @@ class HomeFragment : Fragment() {
     }
 
     private fun loadRecordsAsync() {
-        viewLifecycleOwner.lifecycleScope.launch {
+        loadJob?.cancel()
+        loadJob = viewLifecycleOwner.lifecycleScope.launch {
             progressBar.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
             tvEmpty.visibility = View.GONE
 
             val records = withContext(Dispatchers.IO) {
-                dbHelper.getAllRecords(currentSortOrder)
+                val dbRecords = dbHelper.getAllRecords(currentSortOrder)
+                if (currentSortOrder == TravelDBHelper.SortOrder.DATE_DESC) {
+                    sortByDateDesc(dbRecords)
+                } else {
+                    dbRecords
+                }
             }
+
+            if (!isAdded) return@launch
 
             progressBar.visibility = View.GONE
             adapter.updateRecords(records)
@@ -102,6 +116,19 @@ class HomeFragment : Fragment() {
         }
     }
 
+    private fun sortByDateDesc(records: List<TravelRecord>): List<TravelRecord> {
+        val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return records.sortedWith(
+            compareByDescending<TravelRecord> { record ->
+                try {
+                    formatter.parse(record.visitDate)?.time ?: 0L
+                } catch (e: Exception) {
+                    0L
+                }
+            }.thenByDescending { it.id }
+        )
+    }
+
     private fun showDetail(record: TravelRecord) {
         val detailFragment = DetailFragment.newInstance(record.id)
         parentFragmentManager.beginTransaction()
@@ -110,7 +137,6 @@ class HomeFragment : Fragment() {
             .commit()
     }
 
-    // 옵션 메뉴
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.options_menu, menu)
         super.onCreateOptionsMenu(menu, inflater)
@@ -119,15 +145,11 @@ class HomeFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.menu_sort_date -> {
-                currentSortOrder = "visit_date DESC"
-                loadRecordsAsync()
-                Toast.makeText(requireContext(), "날짜순 정렬", Toast.LENGTH_SHORT).show()
+                applySortOrder(TravelDBHelper.SortOrder.DATE_DESC, "최신 날짜순으로 정렬했습니다")
                 true
             }
             R.id.menu_sort_name -> {
-                currentSortOrder = "title ASC"
-                loadRecordsAsync()
-                Toast.makeText(requireContext(), "이름순 정렬", Toast.LENGTH_SHORT).show()
+                applySortOrder(TravelDBHelper.SortOrder.TITLE_ASC, "이름순으로 정렬했습니다")
                 true
             }
             R.id.menu_delete_all -> {
@@ -138,7 +160,13 @@ class HomeFragment : Fragment() {
         }
     }
 
-    // 컨텍스트 메뉴
+    private fun applySortOrder(sortOrder: TravelDBHelper.SortOrder, message: String) {
+        currentSortOrder = sortOrder
+        saveSortOrder(requireContext(), sortOrder)
+        loadRecordsAsync()
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
     override fun onCreateContextMenu(
         menu: ContextMenu, v: View, menuInfo: ContextMenu.ContextMenuInfo?
     ) {
@@ -202,6 +230,25 @@ class HomeFragment : Fragment() {
             }
             loadRecordsAsync()
             Toast.makeText(requireContext(), "모두 삭제되었습니다", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    companion object {
+        private const val PREFS_NAME = "travel_prefs"
+        private const val KEY_SORT_ORDER = "sort_order"
+
+        fun loadSortOrder(context: Context): TravelDBHelper.SortOrder {
+            val value = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_SORT_ORDER, TravelDBHelper.SortOrder.DATE_DESC.name)
+            return TravelDBHelper.SortOrder.entries.find { it.name == value }
+                ?: TravelDBHelper.SortOrder.DATE_DESC
+        }
+
+        private fun saveSortOrder(context: Context, sortOrder: TravelDBHelper.SortOrder) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_SORT_ORDER, sortOrder.name)
+                .apply()
         }
     }
 }
